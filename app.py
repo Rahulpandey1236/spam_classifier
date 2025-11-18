@@ -4,11 +4,14 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 import pickle
 import string
+import os
 
 app = Flask(__name__)
 
-# IMPORTANT FOR RENDER
-nltk.data.path.append("nltk_data")
+# -------------------------
+# Load NLTK data manually
+# -------------------------
+nltk.data.path.append('./nltk_data')
 
 ps = PorterStemmer()
 
@@ -36,27 +39,27 @@ def transform_text(text):
 
     return " ".join(y)
 
-
 def predict_spam(message):
     transformed_sms = transform_text(message)
     vector_input = tfidf.transform([transformed_sms])
     result = model.predict(vector_input)[0]
     return result
 
-
 @app.route('/')
 def home():
     return render_template('index.html')
 
-
 @app.route('/predict', methods=['POST'])
 def predict():
-    input_sms = request.form['message']
-    result = predict_spam(input_sms)
+    message = request.form['message']
+    result = predict_spam(message)
     return render_template('index.html', result=result)
 
+# -------------------------
+# Load model globally (Render needs this)
+# -------------------------
+tfidf = pickle.load(open("vectorizer.pkl", "rb"))
+model = pickle.load(open("model.pkl", "rb"))
 
 if __name__ == '__main__':
-    tfidf = pickle.load(open('vectorizer.pkl', 'rb'))
-    model = pickle.load(open('model.pkl', 'rb'))
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0')
