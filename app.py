@@ -8,11 +8,34 @@ import os
 
 app = Flask(__name__)
 
-# -------------------------
-# Load NLTK data manually
-# -------------------------
+# -------------------------------------------
+# Ensure NLTK resources exist (Render safe)
+# -------------------------------------------
+
 nltk.data.path.append('./nltk_data')
 
+# Download punkt
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt", download_dir="./nltk_data")
+
+# Download punkt_tab
+try:
+    nltk.data.find("tokenizers/punkt_tab")
+except LookupError:
+    nltk.download("punkt_tab", download_dir="./nltk_data")
+
+# Download stopwords
+try:
+    nltk.data.find("corpora/stopwords")
+except LookupError:
+    nltk.download("stopwords", download_dir="./nltk_data")
+
+
+# -------------------------------------------
+# Text preprocessing function
+# -------------------------------------------
 ps = PorterStemmer()
 
 def transform_text(text):
@@ -27,8 +50,10 @@ def transform_text(text):
     text = y[:]
     y.clear()
 
+    sw = set(stopwords.words('english'))
+
     for i in text:
-        if i not in stopwords.words('english') and i not in string.punctuation:
+        if i not in sw and i not in string.punctuation:
             y.append(i)
 
     text = y[:]
@@ -39,15 +64,24 @@ def transform_text(text):
 
     return " ".join(y)
 
+
+# -------------------------------------------
+# Prediction function
+# -------------------------------------------
 def predict_spam(message):
     transformed_sms = transform_text(message)
     vector_input = tfidf.transform([transformed_sms])
     result = model.predict(vector_input)[0]
     return result
 
+
+# -------------------------------------------
+# Routes
+# -------------------------------------------
 @app.route('/')
 def home():
     return render_template('index.html')
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -55,11 +89,16 @@ def predict():
     result = predict_spam(message)
     return render_template('index.html', result=result)
 
-# -------------------------
-# Load model globally (Render needs this)
-# -------------------------
+
+# -------------------------------------------
+# Load ML model + Vectorizer
+# -------------------------------------------
 tfidf = pickle.load(open("vectorizer.pkl", "rb"))
 model = pickle.load(open("model.pkl", "rb"))
 
+
+# -------------------------------------------
+# Start App (Render)
+# -------------------------------------------
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
